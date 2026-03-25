@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TradeStation Pro</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='traditional_style.css') }}">
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="header-container">
+            <h1 class="logo">TradeStation Pro</h1>
+            <div class="header-links">
+                <span class="account-info">Account: ****5678</span>
+                <span class="divider">|</span>
+                <a href="#" class="header-link">Settings</a>
+                <a href="#" class="header-link">Help</a>
+                <a href="#" class="header-link">Logout</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- Account Summary -->
+        <div class="account-summary">
+            <h2 class="section-title">Account Summary</h2>
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <div class="summary-label">Total Account Value</div>
+                    <div class="summary-value">${{ "{:,.2f}".format(account_summary.total_value) }}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Cash Balance</div>
+                    <div class="summary-value">${{ "{:,.2f}".format(account_summary.cash_balance) }}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Buying Power</div>
+                    <div class="summary-value">${{ "{:,.2f}".format(account_summary.buying_power) }}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Today's Change ($)</div>
+                    <div class="summary-value {% if account_summary.today_change >= 0 %}positive{% else %}negative{% endif %}">
+                        {% if account_summary.today_change >= 0 %}+{% endif %}${{ "{:,.2f}".format(account_summary.today_change) }}
+                    </div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Today's Change (%)</div>
+                    <div class="summary-value {% if account_summary.today_change_percent >= 0 %}positive{% else %}negative{% endif %}">
+                        {% if account_summary.today_change_percent >= 0 %}+{% endif %}{{ "%.2f"|format(account_summary.today_change_percent) }}%
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-grid">
+            <!-- Left Column -->
+            <div class="left-column">
+                <!-- Tabs -->
+                <div class="tabs-container">
+                    <div class="tabs">
+                        <button class="tab active" onclick="showTab('positions')">Positions</button>
+                        <button class="tab" onclick="showTab('orders')">Orders</button>
+                        <button class="tab" onclick="showTab('history')">History</button>
+                    </div>
+
+                    <!-- Positions Tab -->
+                    <div id="positions" class="tab-content active">
+                        {% if positions %}
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Symbol</th>
+                                    <th class="text-right">Shares</th>
+                                    <th class="text-right">Avg Cost</th>
+                                    <th class="text-right">Last Price</th>
+                                    <th class="text-right">Market Value</th>
+                                    <th class="text-right">Gain/Loss</th>
+                                    <th class="text-right">Gain/Loss %</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pos in positions %}
+                                <tr class="data-row">
+                                    <td class="symbol">{{ pos.symbol }}</td>
+                                    <td class="text-right">{{ pos.shares }}</td>
+                                    <td class="text-right">${{ "%.2f"|format(pos.avg_cost) }}</td>
+                                    <td class="text-right">${{ "%.2f"|format(pos.current_price) }}</td>
+                                    <td class="text-right font-medium">${{ "{:,.2f}".format(pos.market_value) }}</td>
+                                    <td class="text-right font-medium {% if pos.gain_loss >= 0 %}positive{% else %}negative{% endif %}">
+                                        {% if pos.gain_loss >= 0 %}+{% endif %}${{ "{:,.2f}".format(pos.gain_loss) }}
+                                    </td>
+                                    <td class="text-right font-medium {% if pos.gain_loss_percent >= 0 %}positive{% else %}negative{% endif %}">
+                                        {% if pos.gain_loss_percent >= 0 %}+{% endif %}{{ "%.2f"|format(pos.gain_loss_percent) }}%
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% else %}
+                        <div class="empty-state">
+                            <p>No open positions</p>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Orders Tab -->
+                    <div id="orders" class="tab-content">
+                        <div class="empty-state">
+                            <p>No open orders</p>
+                        </div>
+                    </div>
+
+                    <!-- History Tab -->
+                    <div id="history" class="tab-content">
+                        {% if history %}
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Symbol</th>
+                                    <th>Side</th>
+                                    <th class="text-right">Shares</th>
+                                    <th class="text-right">Price</th>
+                                    <th class="text-right">Total</th>
+                                    <th class="text-right">Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for trade in history %}
+                                <tr class="data-row">
+                                    <td class="symbol">{{ trade.symbol }}</td>
+                                    <td class="{% if trade.side == 'BUY' %}positive{% else %}negative{% endif %}">{{ trade.side }}</td>
+                                    <td class="text-right">{{ trade.shares }}</td>
+                                    <td class="text-right">${{ "%.2f"|format(trade.price) }}</td>
+                                    <td class="text-right">${{ "{:,.2f}".format(trade.total) }}</td>
+                                    <td class="text-right small">{{ trade.timestamp }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% else %}
+                        <div class="empty-state">
+                            <p>No recent transactions</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Market Data -->
+                <div class="market-data-container">
+                    <div class="section-header">
+                        <h3 class="section-subtitle">Market Data</h3>
+                    </div>
+                    <div class="market-data-scroll">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Symbol</th>
+                                    <th>Name</th>
+                                    <th class="text-right">Bid</th>
+                                    <th class="text-right">Ask</th>
+                                    <th class="text-right">Last</th>
+                                    <th class="text-right">Change</th>
+                                    <th class="text-right">Volume</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for stock in market_data %}
+                                <tr class="data-row clickable" onclick="selectStock('{{ stock.symbol }}', {{ stock.last }})">
+                                    <td class="symbol">{{ stock.symbol }}</td>
+                                    <td>{{ stock.name }}</td>
+                                    <td class="text-right">{{ "%.2f"|format(stock.bid) }}</td>
+                                    <td class="text-right">{{ "%.2f"|format(stock.ask) }}</td>
+                                    <td class="text-right font-medium">{{ "%.2f"|format(stock.last) }}</td>
+                                    <td class="text-right font-medium {% if stock.change >= 0 %}positive{% else %}negative{% endif %}">
+                                        {% if stock.change >= 0 %}+{% endif %}{{ "%.2f"|format(stock.change) }} ({% if stock.change_percent >= 0 %}+{% endif %}{{ "%.2f"|format(stock.change_percent) }}%)
+                                    </td>
+                                    <td class="text-right">{{ stock.volume }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column - Order Entry -->
+            <div class="right-column">
+                <div class="order-form">
+                    <h3 class="section-subtitle">Place Order</h3>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Action</label>
+                        <div class="action-buttons">
+                            <button id="buyBtn" class="action-btn active" onclick="setAction('buy')">Buy</button>
+                            <button id="sellBtn" class="action-btn" onclick="setAction('sell')">Sell</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Selected Stock</label>
+                        <div id="selectedStockDisplay" class="selected-stock-display">
+                            Click a stock from the Market Data table
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Quantity</label>
+                        <input type="number" id="quantityInput" class="form-input" placeholder="0" min="1" oninput="updateEstimate()">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Order Type</label>
+                        <select class="form-select">
+                            <option value="market">Market</option>
+                            <option value="limit">Limit</option>
+                            <option value="stop">Stop</option>
+                            <option value="stop-limit">Stop Limit</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Time in Force</label>
+                        <select class="form-select">
+                            <option value="day">Day</option>
+                            <option value="gtc">Good 'Til Canceled</option>
+                            <option value="ioc">Immediate or Cancel</option>
+                            <option value="fok">Fill or Kill</option>
+                        </select>
+                    </div>
+
+                    <div class="order-summary">
+                        <div class="summary-row">
+                            <span class="summary-row-label">Estimated Cost:</span>
+                            <span id="estimatedCost" class="summary-row-value">$0.00</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-row-label">Commission:</span>
+                            <span class="summary-row-value">$0.00</span>
+                        </div>
+                    </div>
+
+                    <button class="submit-button" onclick="submitOrder()">Review Order</button>
+
+                    <div class="disclaimer">
+                        <p>Orders are subject to terms and conditions. Please review all order details before submitting. Market orders may be subject to price volatility.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedStock = null;
+        let currentAction = 'buy';
+        let currentPrice = 0;
+
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function selectStock(symbol, price) {
+            selectedStock = symbol;
+            currentPrice = price;
+            document.getElementById('selectedStockDisplay').innerHTML = `
+                <strong>${symbol}</strong> at $${price.toFixed(2)}
+            `;
+            document.getElementById('selectedStockDisplay').style.color = '#1e40af';
+            document.getElementById('selectedStockDisplay').style.fontWeight = '600';
+            updateEstimate();
+        }
+
+        function setAction(action) {
+            currentAction = action;
+            document.getElementById('buyBtn').classList.toggle('active', action === 'buy');
+            document.getElementById('sellBtn').classList.toggle('active', action === 'sell');
+        }
+
+        function updateEstimate() {
+            const quantity = parseInt(document.getElementById('quantityInput').value) || 0;
+            const total = quantity * currentPrice;
+            document.getElementById('estimatedCost').textContent = `$${total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        }
+
+        async function submitOrder() {
+            if (!selectedStock) {
+                alert('Please select a symbol from the Market Data list');
+                return;
+            }
+
+            const quantity = parseInt(document.getElementById('quantityInput').value);
+            if (!quantity || quantity <= 0) {
+                alert('Invalid order parameters');
+                return;
+            }
+
+            try {
+                const response = await fetch('/trade', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        symbol: selectedStock,
+                        shares: quantity,
+                        action: currentAction
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert(data.message);
+                    window.location.reload();
+                } else {
+                    alert(data.message);
+                }
+            } catch (error) {
+                console.error('Trade error:', error);
+                alert('Error: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

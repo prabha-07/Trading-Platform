@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TradeFlex - Gamified Trading</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='gamified_style.css') }}">
+</head>
+<body>
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="container">
+            <div class="left-section">
+                <h1 class="logo">TradeFlex</h1>
+                <div class="stat-badge rank">
+                    🏆 Rank #{{ user_stats.rank }}
+                </div>
+                <div class="stat-badge streak">
+                    🔥 {{ user_stats.streak }} Day Streak
+                </div>
+            </div>
+            <div class="right-section">
+                <div class="level-info">
+                    <div class="level-text">Level: {{ user_stats.level }}</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ (user_stats.xp / user_stats.next_level_xp * 100)|int }}%"></div>
+                    </div>
+                </div>
+                <div class="award-icon">🏅</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- Portfolio Card -->
+        <div class="portfolio-card">
+            <div class="portfolio-content">
+                <div class="portfolio-left">
+                    <div class="portfolio-label">Total Portfolio Value</div>
+                    <div class="portfolio-value">${{ "{:,.2f}".format(user_stats.portfolio_value) }}</div>
+                    <div class="portfolio-change {% if user_stats.daily_change >= 0 %}positive{% else %}negative{% endif %}">
+                        {% if user_stats.daily_change >= 0 %}⬆{% else %}⬇{% endif %} ${{ "{:,.2f}".format(user_stats.daily_change|abs) }} ({{ "%.2f"|format(user_stats.daily_change_percent) }}%) <span class="today">Today</span>
+                    </div>
+                </div>
+                <div class="portfolio-icon">⚡</div>
+            </div>
+        </div>
+
+        <!-- Tabs (removed Trending, kept Portfolio, Leaderboard, Achievements) -->
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('portfolio')">Portfolio</button>
+            <button class="tab" onclick="showTab('leaderboard')">Leaderboard</button>
+            <button class="tab" onclick="showTab('achievements')">Achievements</button>
+        </div>
+
+        <!-- Portfolio Tab - Now includes Market Data and Order Form like Traditional -->
+        <div id="portfolio" class="tab-content active">
+            <div class="content-card">
+                <h2 style="margin-bottom: 1.5rem;">Your Portfolio</h2>
+                
+                <!-- Current Positions -->
+                {% if portfolio %}
+                <div style="margin-bottom: 2rem;">
+                    <h3 style="font-size: 1.125rem; margin-bottom: 1rem;">Current Positions</h3>
+                    <table class="positions-table">
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th style="text-align: right;">Shares</th>
+                                <th style="text-align: right;">Avg Cost</th>
+                                <th style="text-align: right;">Current Price</th>
+                                <th style="text-align: right;">Market Value</th>
+                                <th style="text-align: right;">Gain/Loss</th>
+                                <th style="text-align: right;">Gain/Loss %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for position in portfolio %}
+                            <tr>
+                                <td style="font-weight: 600;">{{ position.symbol }}</td>
+                                <td style="text-align: right;">{{ position.shares }}</td>
+                                <td style="text-align: right;">${{ "%.2f"|format(position.avg_price) }}</td>
+                                <td style="text-align: right;">${{ "%.2f"|format(position.current_price) }}</td>
+                                <td style="text-align: right;">${{ "{:,.2f}".format(position.current_value) }}</td>
+                                <td style="text-align: right; color: {% if position.gain_loss >= 0 %}#34d399{% else %}#f87171{% endif %};">
+                                    {% if position.gain_loss >= 0 %}+{% endif %}${{ "{:,.2f}".format(position.gain_loss) }}
+                                </td>
+                                <td style="text-align: right; color: {% if position.gain_loss_percent >= 0 %}#34d399{% else %}#f87171{% endif %};">
+                                    {% if position.gain_loss_percent >= 0 %}+{% endif %}{{ "%.2f"|format(position.gain_loss_percent) }}%
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div style="text-align: center; padding: 2rem; color: #9ca3af; margin-bottom: 2rem;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;">📊</div>
+                    <p>No positions yet. Select a stock below to start trading!</p>
+                </div>
+                {% endif %}
+
+                <!-- Market Data Section -->
+                <div style="margin-bottom: 2rem;">
+                    <h3 style="font-size: 1.125rem; margin-bottom: 1rem;">Market Data</h3>
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        <table class="market-data-table">
+                            <thead>
+                                <tr>
+                                    <th>Symbol</th>
+                                    <th>Company Name</th>
+                                    <th style="text-align: right;">Price</th>
+                                    <th style="text-align: right;">Change</th>
+                                    <th style="text-align: right;">Change %</th>
+                                    <th style="text-align: right;">Volume</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for stock in market_data %}
+                                <tr class="stock-row" onclick="selectStock('{{ stock.symbol }}', '{{ stock.name }}', {{ stock.price }})">
+                                    <td style="font-weight: 600; color: #a855f7;">{{ stock.symbol }}</td>
+                                    <td>{{ stock.name }}</td>
+                                    <td style="text-align: right;">${{ "%.2f"|format(stock.price) }}</td>
+                                    <td style="text-align: right; color: {% if stock.change >= 0 %}#34d399{% else %}#f87171{% endif %};">
+                                        {% if stock.change >= 0 %}+{% endif %}${{ "%.2f"|format(stock.change) }}
+                                    </td>
+                                    <td style="text-align: right; color: {% if stock.percent >= 0 %}#34d399{% else %}#f87171{% endif %};">
+                                        {% if stock.percent >= 0 %}+{% endif %}{{ "%.2f"|format(stock.percent) }}%
+                                    </td>
+                                    <td style="text-align: right;">{{ stock.volume }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Order Entry Section -->
+                <div style="background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 0.75rem; padding: 1.5rem;">
+                    <h3 style="font-size: 1.125rem; margin-bottom: 1rem;">Place Order</h3>
+                    
+                    <div style="display: grid; gap: 1rem;">
+                        <!-- Action Buttons -->
+                        <div>
+                            <label style="display: block; font-size: 0.875rem; margin-bottom: 0.5rem; color: #d1d5db;">Action</label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button id="buyBtn" class="action-btn active" onclick="setAction('buy')">Buy</button>
+                                <button id="sellBtn" class="action-btn" onclick="setAction('sell')">Sell</button>
+                            </div>
+                        </div>
+
+                        <!-- Selected Stock Display -->
+                        <div>
+                            <label style="display: block; font-size: 0.875rem; margin-bottom: 0.5rem; color: #d1d5db;">Selected Stock</label>
+                            <div id="selectedStockDisplay" style="padding: 0.75rem; background: rgba(0, 0, 0, 0.3); border-radius: 0.5rem; font-weight: 600;">
+                                Click a stock from the table above
+                            </div>
+                        </div>
+
+                        <!-- Shares Input -->
+                        <div>
+                            <label style="display: block; font-size: 0.875rem; margin-bottom: 0.5rem; color: #d1d5db;">Number of Shares</label>
+                            <input type="number" id="sharesInput" placeholder="0" min="1" style="width: 100%; padding: 0.75rem; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 0.5rem; color: white; font-size: 1rem;">
+                        </div>
+
+                        <!-- Estimated Cost -->
+                        <div style="background: rgba(0, 0, 0, 0.2); border-radius: 0.5rem; padding: 1rem;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <span style="color: #9ca3af;">Estimated Total:</span>
+                                <span id="estimatedTotal" style="font-weight: 600;">$0.00</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: #9ca3af;">Available Cash:</span>
+                                <span style="font-weight: 600;">${{ "{:,.2f}".format(user_stats.cash) }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <button id="submitOrderBtn" class="submit-btn" onclick="submitOrder()">Review Order</button>
+                    </div>
+                </div>
+
+                <!-- Trade History -->
+                {% if trade_history %}
+                <div style="margin-top: 2rem;">
+                    <h3 style="font-size: 1.125rem; margin-bottom: 1rem;">Recent Trades</h3>
+                    <table class="trades-table">
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Action</th>
+                                <th style="text-align: right;">Shares</th>
+                                <th style="text-align: right;">Price</th>
+                                <th style="text-align: right;">Total</th>
+                                <th style="text-align: right;">Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for trade in trade_history %}
+                            <tr>
+                                <td style="font-weight: 600;">{{ trade.symbol }}</td>
+                                <td style="color: {% if trade.action == 'BUY' %}#34d399{% else %}#f87171{% endif %};">{{ trade.action }}</td>
+                                <td style="text-align: right;">{{ trade.shares }}</td>
+                                <td style="text-align: right;">${{ "%.2f"|format(trade.price) }}</td>
+                                <td style="text-align: right;">${{ "{:,.2f}".format(trade.total) }}</td>
+                                <td style="text-align: right; color: #9ca3af; font-size: 0.875rem;">{{ trade.timestamp }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Leaderboard Tab -->
+        <div id="leaderboard" class="tab-content">
+            <div class="content-card">
+                <div class="section-header">
+                    <span class="header-icon">🏆</span>
+                    <h2>Global Leaderboard</h2>
+                    <span class="sub-text">Live Rankings • {{ "{:,}".format(user_stats.total_users) }} Traders</span>
+                </div>
+                <div class="leaderboard-list">
+                    {% for trader in leaderboard %}
+                    <div class="leaderboard-item">
+                        <div class="trader-left">
+                            <div class="rank {% if trader.rank <= 3 %}top-rank{% endif %}">#{{ trader.rank }}</div>
+                            <div class="badge-icon">{{ trader.badge }}</div>
+                            <div class="trader-info">
+                                <div class="trader-name">{{ trader.name }}</div>
+                                <div class="streak-info">🔥 {{ trader.streak }} day streak</div>
+                            </div>
+                        </div>
+                        <div class="trader-right">
+                            <div class="returns">+{{ trader.returns }}%</div>
+                            <div class="returns-label">All-time returns</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Achievements Tab -->
+        <div id="achievements" class="tab-content">
+            <div class="content-card">
+                <div class="section-header">
+                    <span class="header-icon">⭐</span>
+                    <h2>Achievements</h2>
+                    <span class="sub-text">{{ achievements|selectattr('unlocked')|list|length }}/{{ achievements|length }} Unlocked</span>
+                </div>
+                <div class="achievements-grid">
+                    {% for achievement in achievements %}
+                    <div class="achievement-item {% if achievement.unlocked %}unlocked{% else %}locked{% endif %}">
+                        <div class="achievement-icon">{{ achievement.icon }}</div>
+                        <div class="achievement-name">{{ achievement.name }}</div>
+                        {% if achievement.unlocked %}
+                        <div class="unlocked-text">Unlocked!</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Achievement Popup -->
+    <div id="achievementPopup" class="achievement-popup hidden">
+        <div class="achievement-popup-content">
+            <div class="achievement-popup-icon">🎯</div>
+            <div class="achievement-popup-title">Achievement Unlocked!</div>
+            <div class="achievement-popup-name">First Trade</div>
+        </div>
+    </div>
+
+    <script>
+        let selectedStock = null;
+        let currentAction = 'buy';
+        let currentPrice = 0;
+
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function selectStock(symbol, name, price) {
+            selectedStock = symbol;
+            currentPrice = price;
+            document.getElementById('selectedStockDisplay').innerHTML = `
+                <strong>${symbol}</strong> - ${name}<br>
+                <span style="color: #a855f7;">$${price.toFixed(2)}</span>
+            `;
+            updateEstimate();
+        }
+
+        function setAction(action) {
+            currentAction = action;
+            document.getElementById('buyBtn').classList.toggle('active', action === 'buy');
+            document.getElementById('sellBtn').classList.toggle('active', action === 'sell');
+            updateEstimate();
+        }
+
+        function updateEstimate() {
+            const shares = parseInt(document.getElementById('sharesInput').value) || 0;
+            const total = shares * currentPrice;
+            document.getElementById('estimatedTotal').textContent = `$${total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        }
+
+        document.getElementById('sharesInput').addEventListener('input', updateEstimate);
+
+        async function submitOrder() {
+            if (!selectedStock) {
+                alert('Please select a stock from the Market Data table');
+                return;
+            }
+
+            const shares = parseInt(document.getElementById('sharesInput').value);
+            if (!shares || shares <= 0) {
+                alert('Please enter a valid number of shares');
+                return;
+            }
+
+            try {
+                const response = await fetch('/trade', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        symbol: selectedStock,
+                        shares: shares,
+                        action: currentAction
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Show achievement popup if unlocked
+                    if (data.achievement_unlocked) {
+                        showAchievementPopup(data.achievement_unlocked);
+                        // Wait for popup to show before reloading
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 2000);
+                    } else {
+                        alert(data.message);
+                        window.location.reload();
+                    }
+                } else {
+                    alert(data.message);
+                }
+            } catch (error) {
+                console.error('Trade error:', error);
+                alert('Error: ' + error.message);
+            }
+        }
+
+        function showAchievementPopup(achievementName) {
+            const popup = document.getElementById('achievementPopup');
+            document.querySelector('.achievement-popup-name').textContent = achievementName;
+            popup.classList.remove('hidden');
+            
+            setTimeout(() => {
+                popup.classList.add('hidden');
+            }, 4000);
+        }
+    </script>
+</body>
+</html>
